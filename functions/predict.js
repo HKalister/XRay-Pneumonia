@@ -89,7 +89,4 @@ app.listen(8080, async () => {
 
 // Netlify Functions handler
 module.exports.handler = serverless(app);
-  const serverless = require('serverless-http');
-  return serverless(app)(event, context);
-};
 
