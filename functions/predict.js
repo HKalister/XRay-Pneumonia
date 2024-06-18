@@ -106,3 +106,4 @@ module.exports.handler = (event, context) => {
   const serverless = require('serverless-http');
   return serverless(app)(event, context);
 };
+
