@@ -11,7 +11,7 @@ app = Flask(__name__)
 
 # Función para descargar el modelo desde Google Drive
 def download_model():
-    url = "https://drive.google.com/uc?id=1DK4L9QSYD4Kz_YiMJLOsNXa7ze2TSt5V"
+    url = "https://drive.google.com/uc?export=download&id=1DK4L9QSYD4Kz_YiMJLOsNXa7ze2TSt5V"
     output = "/tmp/best_model_improved.keras"
     response = requests.get(url)
     with open(output, 'wb') as file:
