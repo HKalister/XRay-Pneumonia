@@ -5,11 +5,26 @@ from tensorflow.keras.preprocessing import image
 import numpy as np
 import os
 from PIL import Image
+import requests
 
 app = Flask(__name__)
 
+# Función para descargar el modelo desde Google Drive
+def download_model():
+    url = "https://drive.google.com/uc?id=1DK4L9QSYD4Kz_YiMJLOsNXa7ze2TSt5V"
+    output = "/tmp/best_model_improved.keras"
+    response = requests.get(url)
+    with open(output, 'wb') as file:
+        file.write(response.content)
+    return output
+
+# Ruta para cargar el modelo
+model_path = "/tmp/best_model_improved.keras"
+if not os.path.exists(model_path):
+    model_path = download_model()
+
 # Cargar el modelo entrenado
-model = load_model('best_model_improved.keras')
+model = load_model(model_path)
 
 @app.route('/')
 def upload_form():
