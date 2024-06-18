@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 const unzipper = require('unzipper');
+const serverless = require('serverless-http');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -14,50 +15,35 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'templates', 'upload.html'));
 });
 
-// Ruta para descargar y descomprimir el modelo
-const downloadAndUnzipModel = async () => {
-  const url = "https://drive.google.com/uc?export=download&id=1r4KZYCs_Iyfz2Tml7XkmGAMEbpXSsF7n";
-  const localZipPath = path.join(__dirname, 'model.zip');
-  const modelDir = path.join(__dirname, 'models');
-
-  const response = await axios({
-    url,
-    method: 'GET',
-    responseType: 'stream',
-  });
-
-  const writer = fs.createWriteStream(localZipPath);
-  response.data.pipe(writer);
-
-  return new Promise((resolve, reject) => {
-    writer.on('finish', async () => {
-      fs.createReadStream(localZipPath)
-        .pipe(unzipper.Extract({ path: modelDir }))
-        .on('close', () => {
-          fs.unlinkSync(localZipPath); // Eliminar el archivo zip
-          resolve(modelDir);
-        });
-    });
-    writer.on('error', reject);
-  });
-};
-
-// Ruta para cargar el modelo
-const modelPath = path.join(__dirname, 'models', 'best_model_improved');
+// Descargar y cargar el modelo directamente desde Google Drive sin descomprimirlo
+const modelURL = "https://drive.google.com/uc?export=download&id=1KDEGqPBobms06gXO7o6VTS1pF---LXG0";
 let model;
 
 const loadModel = async () => {
-  if (!fs.existsSync(modelPath)) {
-    console.log(`${modelPath} not found. Downloading and extracting model...`);
-    await downloadAndUnzipModel();
-  }
+  try {
+    console.log(`Loading model from ${modelURL}`);
+    const response = await axios({
+      url: modelURL,
+      method: 'GET',
+      responseType: 'arraybuffer',
+    });
 
-  if (fs.existsSync(modelPath)) {
-    console.log(`Loading model from ${modelPath}`);
-    model = await tf.loadLayersModel(`file://${modelPath}/model.json`);
+    const buffer = Buffer.from(response.data, 'binary');
+    const zip = await unzipper.Open.buffer(buffer);
+
+    // Cargar el modelo directamente desde el buffer zip
+    const modelFile = zip.files.find(d => d.path === 'best_model_basic/model.json');
+    const modelDir = path.join(__dirname, 'models');
+    await modelFile.buffer()
+      .then(data => {
+        fs.writeFileSync(path.join(modelDir, 'model.json'), data);
+        console.log('Model JSON saved.');
+      });
+
+    model = await tf.loadLayersModel(`file://${modelDir}/model.json`);
     console.log('Model loaded successfully');
-  } else {
-    throw new Error(`Model file not found at ${modelPath}`);
+  } catch (error) {
+    console.error('Error loading model:', error);
   }
 };
 
@@ -102,7 +88,7 @@ app.listen(8080, async () => {
 });
 
 // Netlify Functions handler
-module.exports.handler = (event, context) => {
+module.exports.handler = serverless(app);
   const serverless = require('serverless-http');
   return serverless(app)(event, context);
 };
